@@ -20,5 +20,10 @@
   "bugs": {
     "url": "https://github.com/bguiz/rif-storage-util/issues"
   },
-  "homepage": "https://github.com/bguiz/rif-storage-util#readme"
+  "homepage": "https://github.com/bguiz/rif-storage-util#readme",
+  "dependencies": {
+    "@rsksmart/rif-storage": "0.1.0",
+    "p-map": "4.0.0",
+    "recursive-readdir": "2.2.2"
+  }
 }
