@@ -1,0 +1,24 @@
+{
+  "name": "rif-storage-util",
+  "version": "0.0.0",
+  "description": "Utility functions to interact with RIF Storage",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bguiz/rif-storage-util.git"
+  },
+  "keywords": [
+    "rif",
+    "rif-storage",
+    "ipfs"
+  ],
+  "author": "bguiz",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/bguiz/rif-storage-util/issues"
+  },
+  "homepage": "https://github.com/bguiz/rif-storage-util#readme"
+}
