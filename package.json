@@ -24,7 +24,9 @@
   "homepage": "https://github.com/bguiz/rif-web-util#readme",
   "dependencies": {
     "@rsksmart/rif-storage": "0.1.0",
+    "@truffle/hdwallet-provider": "1.2.0",
     "p-map": "4.0.0",
-    "recursive-readdir": "2.2.2"
+    "recursive-readdir": "2.2.2",
+    "web3": "1.2.11"
   }
 }
