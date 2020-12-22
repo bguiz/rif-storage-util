@@ -6,10 +6,9 @@ function rifStorageUtilFactory({
   if (!ipfsUtil) {
     throw new Error('One or more dependencies unspecified');
   }
-  console.log(ipfsUtil);
 
   return {
-    ipfs: ipfsUtil,
+    ipfsUtil,
   };
 }
 
