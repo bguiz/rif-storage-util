@@ -112,16 +112,21 @@ function ipfsUtilFactory({
   }
 }
 
+let defaultInstance;
 const moduleWrap = {
   factory: ipfsUtilFactory,
   get default () {
-    return ipfsUtilFactory({
+    if (defaultInstance) {
+      return defaultInstance;
+    }
+    defaultInstance = ipfsUtilFactory({
       fs: require('fs'),
       path: require('path'),
       rifStorage: require('@rsksmart/rif-storage'),
       recursiveReaddir: require('recursive-readdir'),
       pMap: require('p-map'),
     });
+    return defaultInstance;
   },
 }
 

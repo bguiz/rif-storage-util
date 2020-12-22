@@ -12,12 +12,17 @@ function rifStorageUtilFactory({
   };
 }
 
+let defaultInstance;
 const moduleWrap = {
   factory: rifStorageUtilFactory,
   get default () {
-    return rifStorageUtilFactory({
+    if (defaultInstance) {
+      return defaultInstance;
+    }
+    defaultInstance = rifStorageUtilFactory({
       ipfsUtil: require('./ipfs-util.js').default,
     });
+    return defaultInstance;
   },
 }
 
