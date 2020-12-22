@@ -23,7 +23,10 @@
   },
   "homepage": "https://github.com/bguiz/rif-web-util#readme",
   "dependencies": {
+    "@rsksmart/erc677": "1.0.2",
     "@rsksmart/rif-storage": "0.1.0",
+    "@rsksmart/rns": "1.9.0",
+    "@rsksmart/rns-rskregistrar": "1.2.4",
     "@truffle/hdwallet-provider": "1.2.0",
     "p-map": "4.0.0",
     "recursive-readdir": "2.2.2",
