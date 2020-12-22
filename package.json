@@ -1,26 +1,27 @@
 {
-  "name": "rif-storage-util",
+  "name": "rif-web-util",
   "version": "0.0.0",
-  "description": "Utility functions to interact with RIF Storage",
-  "main": "rif-storage-util.js",
+  "description": "Utility functions for websites using RIF Storage and RIF Name Service",
+  "main": "rif-web-util.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/bguiz/rif-storage-util.git"
+    "url": "git+https://github.com/bguiz/rif-web-util.git"
   },
   "keywords": [
     "rif",
     "rif-storage",
-    "ipfs"
+    "ipfs",
+    "rns"
   ],
   "author": "bguiz",
   "license": "GPL-3.0",
   "bugs": {
-    "url": "https://github.com/bguiz/rif-storage-util/issues"
+    "url": "https://github.com/bguiz/rif-web-util/issues"
   },
-  "homepage": "https://github.com/bguiz/rif-storage-util#readme",
+  "homepage": "https://github.com/bguiz/rif-web-util#readme",
   "dependencies": {
     "@rsksmart/rif-storage": "0.1.0",
     "p-map": "4.0.0",
