@@ -1,23 +1,13 @@
-const defaultWeb3ProviderOptions = Object.freeze({
-  mnemonic: Object.freeze({
-    phrase: '',
-  }),
-  // Ref: https://developers.rsk.co/rsk/architecture/account-based/
-  derivationPath: "m/44'/37310'/0'/0/0",
-  providerOrUrl: 'https://public-node.testnet.rsk.co/',
-  // Higher polling interval to check for blocks less frequently
-  pollingInterval: 15e3,
-});
-
 function rifNameUtilFactory({
   // dependencies
-  setTimeout,
   web3Util,
   Rns,
   RnsFifsAddrRegistrarData,
   Erc677Data,
   // config
   postMakeCommitmentCanRevealPollingInterval = 35,
+  // TODO import rnsDefinitiveResolverAddress from somewhere, instead of hardcoding it
+  rnsDefinitiveResolverAddress = '0x25C289ccCFFf700c6a38722F4913924fE504De0e',
 }) {
   if (!web3Util ||
     !Rns ||
@@ -101,13 +91,8 @@ function rifNameUtilFactory({
     return callData;
   }
 
-  async function waitSeconds(s) {
-    return await new Promise((resolve) => {
-      setTimeout(resolve, s * 1e3)
-    });
-  }
-
   async function registerCommit(label, address) {
+    // console.log('registerCommit', { label, address });
     const web3 = await web3Util.getWeb3();
     const rnsRegistrar = await getRnsRegistrar();
     const mainAccount = await web3Util.getMainAccount();
@@ -134,7 +119,7 @@ function rifNameUtilFactory({
         .canReveal(commitment)
         .call({ from: mainAccount });
       if (!canReveal) {
-        await waitSeconds(postMakeCommitmentCanRevealPollingInterval);
+        await web3Util.waitSeconds(postMakeCommitmentCanRevealPollingInterval);
       }
     }
 
@@ -146,6 +131,7 @@ function rifNameUtilFactory({
   }
 
   async function registerFinalise(label, address, duration, secret) {
+    // console.log('registerFinalise', { label, address, duration, secret });
     const web3 = await web3Util.getWeb3();
     const rifToken = await getRifToken();
     const mainAccount = await web3Util.getMainAccount();
@@ -181,12 +167,16 @@ function rifNameUtilFactory({
       // gas: tx3GasEstimate,
     });
 
+    // NOTE default resolver is not the "definitive resolver",
+    // which is required in order to be able to get/ set contenthash
+
     return {
       transferAndCallTxHash: tx3.transactionHash,
     };
   }
 
   async function register(label, address, duration) {
+    // console.log('register', { label, address, duration });
     const rns = await getNameService();
 
     const available = await rns.available(label);
@@ -201,40 +191,155 @@ function rifNameUtilFactory({
     return await registerFinalise(label, address, duration, secret);
   }
 
-  async function publish(label, address, contentHash) {
+  async function contentUpdate(label, address, contenthash) {
+    // console.log('contentUpdate', { label, address, contenthash });
+    const rns = await getNameService();
+    const name = `${label}.rsk`;
+
+    let currentContenthash = '';
+    let needToUpdateResolver = false;
+    let needToUpdateContenthash = false;
+    try {
+      currentContenthash = await rns.contenthash(name);
+      // console.log({ currentContenthash });
+      needToUpdateContenthash =
+        (`${currentContenthash.protocolType}://${currentContenthash.decoded}` !==
+        contenthash);
+    } catch (ex) {
+      if (ex.message === 'No addr resolution set' ||
+        ex.message === 'No resolver' ||
+        ex.message === 'No contenthash interface') {
+        needToUpdateResolver = true;
+        needToUpdateContenthash = true;
+      } else if (ex.message === 'No contenthash resolution set') {
+        // resolver already supports contenthash, no need to change it
+        needToUpdateContenthash = true;
+      } else {
+        throw ex;
+      }
+    }
+
+    if (needToUpdateResolver) {
+      const txHashForSetResolver = await rns.setResolver(
+        name,
+        rnsDefinitiveResolverAddress.toLowerCase(),
+      );
+      // console.log({ txHashForSetResolver });
+
+      // wait until above tx has been mined
+      const txReceiptForSetResolver = await web3Util.waitForTxToMine(txHashForSetResolver);
+      if (!txReceiptForSetResolver.status) {
+        throw new Error('Failure in setResolver for tx ' + txHashForSetResolver);
+      }
+    }
+
+    // may need to setAddr again, because changing the resolver means that
+    // existing address resolutions disappear
+    let needToUpdateAddr = needToUpdateResolver;
+    if (!needToUpdateAddr) {
+      let currentAddr;
+      try {
+        currentAddr = await rns.addr(name);
+      } catch (ex) {
+        if (ex.message === 'No addr resolution set') {
+          needToUpdateAddr = true;
+        } else {
+          throw ex;
+        }
+      }
+      needToUpdateAddr = !currentAddr ||
+        (currentAddr.toLowerCase() !== address.toLowerCase());
+    }
+
+    if (needToUpdateAddr) {
+      const txHashForSetAddr = await rns.setAddr(name, address.toLowerCase());
+      // console.log({ txHashForSetAddr });
+
+      // wait until above tx has been mined
+      const txReceiptForSetAddr = await web3Util.waitForTxToMine(txHashForSetAddr);
+      if (!txReceiptForSetAddr.status) {
+        throw new Error('Failure in setAddr for tx ' + txHashForSetAddr);
+      }
+    }
+
+    if (needToUpdateContenthash) {
+      const txHashForSetContenthash = await rns.setContenthash(
+        name,
+        contenthash,
+      );
+      // console.log({ txHashForSetContenthash });
+
+      // wait until above tx has been mined
+      const txReceiptForSetContenthash = await web3Util.waitForTxToMine(txHashForSetContenthash);
+      if (!txReceiptForSetContenthash.status) {
+        throw new Error('Failure in setContenthash for tx ' + txHashForSetContenthash);
+      }
+    }
+
+    const updatedContentHash = await rns.contenthash(name);
+    let localUrl;
+    let remoteUrl;
+    if (updatedContentHash.protocolType === 'ipfs') {
+      localUrl = `http://localhost:8080/ipfs/${updatedContentHash.decoded}`;
+      remoteUrl = `https://ipfs.io/ipfs/${updatedContentHash.decoded}`;
+    }
+
+    return {
+      name,
+      address,
+      ...updatedContentHash,
+      localUrl,
+      remoteUrl,
+    };
+  }
+
+  async function publish(label, address, duration, contenthash) {
     const rns = await getNameService();
 
     let lookedUpAddress;
     let noResolver = false;
+    let noResolution = false;
     const name = `${label}.rsk`;
     try {
       lookedUpAddress = await rns.addr(name);
     } catch (lookupError) {
       if (lookupError.message !== 'No resolver') {
-        throw lookupError; // rethrow
+        if (lookupError.message !== 'No addr resolution set') {
+          throw lookupError; // rethrow
+        } else {
+          noResolution = true;
+        }
       } else {
         noResolver = true;
       }
     }
+    // console.log({ noResolution, noResolver });
     if (noResolver) {
       // then register the address for the first time
-      await register(label, address, 1);
-    } else if (lookedUpAddress.toLowerCase() !== address.toLowerCase()) {
+      await register(label, address, duration);
+      // console.log('register completed');
+    } else if (lookedUpAddress &&
+      lookedUpAddress.toLowerCase() !== address.toLowerCase()) {
       throw new Error(
         'Name already registered to a different address: ' +
         lookedUpAddress);
     }
-    const currentContentHash = await
-      rns.contenthash(name);
-    if (currentContentHash === contentHash) {
-      // Content hash already up to date
-      return currentContentHash;
-    } else {
-      // Updating contenthash for name...
-      const updatedContentHash = await
-        rns.setContenthash(name, contentHash);
-      return updatedContentHash;
+
+    const updatedContentHash = await contentUpdate(label, address, contenthash);
+    let localUrl;
+    let remoteUrl;
+    if (updatedContentHash.type === 'ipfs') {
+      localUrl = `http://localhost:8080/ipfs/${updatedContentHash.decoded}`;
+      remoteUrl = `https://ipfs.io/ipfs/${updatedContentHash.decoded}`;
     }
+
+    return {
+      name,
+      address,
+      ...updatedContentHash,
+      localUrl,
+      remoteUrl,
+    };
   }
 
   return {
@@ -245,6 +350,7 @@ function rifNameUtilFactory({
     registerCommit,
     registerFinalise,
     register,
+    contentUpdate,
     publish,
   };
 }
@@ -257,7 +363,6 @@ const moduleWrap = {
       return defaultInstance;
     }
     defaultInstance = rifNameUtilFactory({
-      setTimeout,
       web3Util: require('./web3-util.js').default,
       Rns: require('@rsksmart/rns'),
       RnsFifsAddrRegistrarData: require('@rsksmart/rns-rskregistrar/FIFSAddrRegistrarData.json'),
