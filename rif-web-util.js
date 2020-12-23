@@ -2,16 +2,19 @@ function rifWebUtilFactory({
   // dependencies
   web3Util,
   rifStorageUtil,
+  rifNameUtil,
   // config
 }) {
   if (!web3Util ||
-    !rifStorageUtil) {
+    !rifStorageUtil ||
+    !rifNameUtil) {
     throw new Error('One or more dependencies unspecified');
   }
 
   return {
     web3Util,
     rifStorageUtil,
+    rifNameUtil,
   };
 }
 
@@ -21,6 +24,7 @@ const moduleWrap = {
     return rifWebUtilFactory({
       web3Util: require('./web3-util.js').default,
       rifStorageUtil: require('./rif-storage-util.js').default,
+      rifNameUtil: require('./rif-name-util.js').default,
     });
   },
 }

@@ -11,6 +11,7 @@ const defaultWeb3ProviderOptions = Object.freeze({
 
 function web3UtilFactory({
   // dependencies
+  setTimeout,
   fs,
   Web3,
   HDWalletProvider,
@@ -139,6 +140,7 @@ const moduleWrap = {
       return defaultInstance;
     }
     defaultInstance = web3UtilFactory({
+      setTimeout,
       fs: require('fs'),
       Web3: require('web3'),
       HDWalletProvider: require('@truffle/hdwallet-provider'),
