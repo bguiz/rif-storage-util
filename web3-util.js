@@ -20,6 +20,8 @@ function web3UtilFactory({
   web3ProviderSeedPhraseFile = '.testnet.seed-phrase',
   // web3ProviderGasPrice = 0,
   // web3ProviderGasMultiplier = 1.1,
+  waitForTxToMineIntervalSeconds = 33,
+  waitForTxToMineIntervalCount = 4,
 }) {
   if (!fs ||
     !Web3 ||
@@ -83,6 +85,31 @@ function web3UtilFactory({
     }
   }
 
+  async function waitSeconds(s) {
+    return await new Promise((resolve) => {
+      setTimeout(resolve, s * 1e3)
+    });
+  }
+
+  async function waitForTxToMine(
+    txHash,
+    intervalSeconds = waitForTxToMineIntervalSeconds,
+    intervalCount = waitForTxToMineIntervalCount,
+  ) {
+    const web3 = await getWeb3();
+    for (let iter = intervalCount + 1; iter > 0; --iter) {
+      const txReceipt = await web3.eth.getTransactionReceipt(txHash);
+      if (txReceipt) {
+        // NOTE that a mined transaction may be either successful or reverted,
+        // based on txReceipt.status
+        return txReceipt;
+      }
+      // if !txReceipt, the transaction is still pending, poll again
+      await waitSeconds(intervalSeconds);
+    }
+    throw new Error('Transaction did not get mined');
+  }
+
   async function getAccounts() {
     const web3 = await getWeb3();
     return web3.eth.getAccounts();
@@ -98,6 +125,9 @@ function web3UtilFactory({
     getSeedPhraseFromFile,
     getAccounts,
     getMainAccount,
+    // supporting functions
+    waitSeconds,
+    waitForTxToMine,
   };
 }
 
